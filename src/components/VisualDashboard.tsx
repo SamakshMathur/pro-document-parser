@@ -44,20 +44,20 @@ export const VisualDashboard: React.FC<VisualDashboardProps> = ({ onFileSelect, 
           </filter>
         </defs>
         
-        {/* Left side connections (Inputs to Hub) */}
-        <path d="M 120,80 Q 300,80 500,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" className="animate-pulse" filter="url(#glow)" />
-        <path d="M 120,180 Q 300,180 500,300" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 120,280 Q 300,280 500,320" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 120,380 Q 300,380 500,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 120,480 Q 300,480 500,360" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 120,580 Q 300,580 500,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        {/* Left side connections (Inputs to Hub edge) - Cleaned to avoid overlaps */}
+        <path d="M 120,80 Q 250,80 330,220" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" className="animate-pulse" filter="url(#glow)" />
+        <path d="M 120,180 Q 250,180 330,250" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,280 Q 250,280 330,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,380 Q 250,380 330,310" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,480 Q 250,440 330,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,580 Q 250,480 330,370" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
 
-        {/* Right side connections (Hub to Outcomes) */}
-        <path d="M 880,100 Q 700,100 500,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
-        <path d="M 880,220 Q 700,220 500,310" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-        <path d="M 880,340 Q 700,340 500,330" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-        <path d="M 880,460 Q 700,460 500,350" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-        <path d="M 880,580 Q 700,580 500,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
+        {/* Right side connections (Outcome edges to Hub edge) - Cleaned to avoid overlaps */}
+        <path d="M 880,100 Q 750,100 670,220" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
+        <path d="M 880,220 Q 750,220 670,250" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,340 Q 750,340 670,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,460 Q 750,420 670,310" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,580 Q 750,460 670,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
       </svg>
 
       <div className="relative z-10 w-full flex items-center justify-between max-w-7xl h-full">
