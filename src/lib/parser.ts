@@ -44,8 +44,23 @@ export const classifyAndParse = async (text: string, fileName: string): Promise<
   const fields: ParsedField[] = [];
   
   // Add Identifiers / Metadata (Top Priority)
+  // We want Name, Position, Email, Phone to be FIRST in the list
+  const priorityOrder = ['candidate_name', 'current_position', 'contact_email', 'contact_phone'];
+  
+  priorityOrder.forEach(key => {
+    if (advancedData.fields[key]) {
+      const displayLabel = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      fields.push({
+        label: displayLabel,
+        value: advancedData.fields[key].value,
+        confidence: advancedData.fields[key].confidence
+      });
+      delete advancedData.fields[key];
+    }
+  });
+
+  // Add Remaining Dynamic Fields
   Object.entries(advancedData.fields).forEach(([label, data]) => {
-    // Label beautification
     const displayLabel = label.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     fields.push({
       label: displayLabel,
@@ -103,11 +118,37 @@ function extractEverythingSmart(text: string, lines: string[], fileName: string)
   else if (/experience|education|skills|resume|cv/i.test(text)) result.document_type = "Resume";
   else if (/agreement|contract|this lease|hereby|party/i.test(text)) result.document_type = "Legal";
 
-  // --- 2. Dynamic Field Detection (Smart Filtering) ---
+  // --- 2. Identity Extraction (Resume Specific - Top of Doc) ---
+  if (result.document_type === "Resume") {
+    // 2.a Candidate Name: Usually the first non-empty line
+    if (lines.length > 0) {
+      const nameCandidate = lines[0].replace(/[|•]/g, '').trim();
+      if (nameCandidate.length > 3 && nameCandidate.split(' ').length <= 4) {
+        result.fields['candidate_name'] = { value: nameCandidate, confidence: 0.95 };
+      }
+    }
+
+    // 2.b Current Position / Headline: Usually the second or third line
+    for (let i = 1; i < Math.min(lines.length, 4); i++) {
+      const line = lines[i];
+      if (/Developer|Engineer|Manager|Lead|Analyst|Consultant/i.test(line)) {
+        result.fields['current_position'] = { value: line.replace(/[|•]/g, '').trim(), confidence: 0.90 };
+        break;
+      }
+    }
+
+    // 2.c Contact Info (Email & Phone) - Using global scan but prioritizing top
+    const emailMatch = text.match(/[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+\.[a-zA-z0-9]{2,}/i);
+    if (emailMatch) result.fields['contact_email'] = { value: emailMatch[0], confidence: 0.99 };
+    
+    const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
+    if (phoneMatch) result.fields['contact_phone'] = { value: phoneMatch[0], confidence: 0.98 };
+  }
+
+  // --- 3. Dynamic Field Detection (Smart Filtering) ---
   const kvRegex = /^\s*([^:\n]{2,40}):\s*(.+)$/gm;
   let match;
   
-  // Common Junk Patterns for labels
   const junkLabels = [
     'cid', 'page', 'date', 'frontend', 'background', 'http', 'https', 'www', 
     'unknown', 'na', 'n/a', 'undefined', 'null'
@@ -117,11 +158,6 @@ function extractEverythingSmart(text: string, lines: string[], fileName: string)
     const rawLabel = match[1].trim();
     const value = match[2].trim();
     
-    // Smart Label Filter: 
-    // - No leading digits/symbols
-    // - No cid artifacts
-    // - Not on the junk list
-    // - Length > 2
     const cleanLabel = rawLabel.replace(/^[^a-zA-Z]+/, '').trim();
     const labelKey = cleanLabel.toLowerCase().replace(/\s+/g, '_');
 
@@ -130,36 +166,26 @@ function extractEverythingSmart(text: string, lines: string[], fileName: string)
       !junkLabels.some(j => labelKey.includes(j)) &&
       value.length > 0 && 
       value.length < 300 &&
-      !/^\d+$/.test(cleanLabel) // Not just a number
+      !/^\d+$/.test(cleanLabel) &&
+      !result.fields[labelKey] // Don't overwrite identity fields
     ) {
       result.fields[labelKey] = { value, confidence: 0.95 };
     }
-  }
-
-  // --- 3. Resume Specific Entities (Emails, Phones, Names) ---
-  if (result.document_type === "Resume") {
-    const emailMatch = text.match(/[a-zA-Z0-9.\-_+]+@[a-zA-Z0-9.\-_]+\.[a-zA-Z]{2,}/i);
-    if (emailMatch) result.fields['contact_email'] = { value: emailMatch[0], confidence: 0.99 };
-    
-    const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
-    if (phoneMatch) result.fields['contact_phone'] = { value: phoneMatch[0], confidence: 0.98 };
   }
 
   // --- 4. Table Detection ---
   result.tables = detectAndExtractTables(lines);
 
   // --- 5. Content Section Detection ---
-  // A vertical scan for likely headers
   let currentHeader = result.document_type === "Generic" ? "Extracted Information" : "Document Overview";
   let currentBlock: string[] = [];
 
   for (const line of lines) {
-    // A line is a header if it's Uppercase, short, and not a KV pair we already caught
     const isLikelyHeader = /^[A-Z\s&]{3,40}$/.test(line) || 
                           (/^(\d+[\.\s]*)?[A-Z][a-z\s]{3,30}$/.test(line) && line.split(' ').length < 5);
     
     if (isLikelyHeader && !line.includes(':')) {
-      if (currentBlock.length > 5) { // Only push if there's meaningful content
+      if (currentBlock.length > 5) {
         result.raw_sections.push(`${currentHeader}\n${currentBlock.join('\n')}`);
       }
       currentHeader = line;
