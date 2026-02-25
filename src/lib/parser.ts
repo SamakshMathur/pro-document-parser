@@ -94,19 +94,26 @@ function extractEverything(text: string, fileName: string): AdvancedParsedData {
   else if (/agreement|contract|this lease|hereby|party of the first part/i.test(text)) result.document_type = "Legal";
 
   // --- 2. Key-Value Extraction (Dynamic Field Detection) ---
-  // Matches patterns like "Label: Value" or "Label ... Value"
-  const kvRegex = /^([^:\n]{2,30}):\s*(.+)$/gm;
+  // Improved regex: Allows leading whitespace, characters like / or @, and longer labels (up to 50 chars)
+  const kvRegex = /^\s*([^:\n\d][^:\n]{1,50}):\s*(.+)$/gm;
   let match;
   while ((match = kvRegex.exec(text)) !== null) {
-    const label = match[1].toLowerCase().replace(/\s+/g, '_');
+    const rawLabel = match[1].trim();
+    // Clean up label: remove // or leading bullet chars
+    const cleanedLabel = rawLabel.replace(/^[\/\-\s\d\.]+/g, '').trim().toLowerCase().replace(/\s+/g, '_');
     const value = match[2].trim();
-    if (value.length > 0 && value.length < 200) {
-      result.fields[label] = { value, confidence: 0.95 };
+    
+    if (cleanedLabel.length > 1 && value.length > 0 && value.length < 500) {
+      result.fields[cleanedLabel] = { value, confidence: 0.95 };
     }
   }
 
+  // Fallback: If no structured fields found, treat first significant lines as "Title/Header"
+  if (Object.keys(result.fields).length === 0 && lines.length > 0) {
+    result.fields['document_heading'] = { value: lines[0], confidence: 0.80 };
+  }
+
   // --- 3. Table Extraction (Heuristic Logic) ---
-  // Looking for tab-separated or multiple spaces patterns
   const tableData = detectAndExtractTables(lines);
   result.tables = tableData;
 
@@ -115,7 +122,10 @@ function extractEverything(text: string, fileName: string): AdvancedParsedData {
   let currentContent: string[] = [];
   
   for (const line of lines) {
-    if (line.toUpperCase() === line && line.length > 3 && line.length < 50) {
+    // Detect section headers: Numbers + Uppercase or just Uppercase blocks
+    const isSectionHeader = /^(\d+[\.\s]*)?[A-Z][A-Z\s&]{2,50}$/.test(line);
+    
+    if (isSectionHeader) {
       if (currentSection) result.raw_sections.push(`${currentSection}\n${currentContent.join('\n')}`);
       currentSection = line;
       currentContent = [];
@@ -123,7 +133,12 @@ function extractEverything(text: string, fileName: string): AdvancedParsedData {
       currentContent.push(line);
     }
   }
-  if (currentSection) result.raw_sections.push(`${currentSection}\n${currentContent.join('\n')}`);
+  if (currentSection) {
+    result.raw_sections.push(`${currentSection}\n${currentContent.join('\n')}`);
+  } else if (lines.length > 0 && result.raw_sections.length === 0) {
+    // If no sections found, push whole text as a single section
+    result.raw_sections.push(`Full Content\n${text.substring(0, 2000)}${text.length > 2000 ? '...' : ''}`);
+  }
 
   // --- 5. Normalization ---
   Object.keys(result.fields).forEach(key => {
