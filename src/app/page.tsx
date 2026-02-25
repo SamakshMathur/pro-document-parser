@@ -246,15 +246,18 @@ function NavItem({ icon, label, active = false, onClick, isExpanded = true }: { 
     <div 
       onClick={onClick}
       className={cn(
-      "flex items-center space-x-3 px-4 py-3 rounded-[10px] cursor-pointer transition-all duration-300",
+      "flex items-center rounded-[10px] cursor-pointer transition-all duration-300",
+      isExpanded ? "space-x-3 px-4 py-3" : "justify-center p-3 w-12 mx-auto",
       active 
         ? "bg-white/20 text-white shadow-glow font-bold" 
         : "text-white/60 hover:bg-white/10 hover:text-white"
     )}>
-      {icon}
+      <div className={cn("flex-shrink-0", !isExpanded && "flex items-center justify-center")}>
+        {icon}
+      </div>
       <span className={cn(
         "text-sm font-semibold tracking-wide transition-all duration-500 overflow-hidden whitespace-nowrap",
-        isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+        isExpanded ? "opacity-100 w-auto ml-1" : "opacity-0 w-0"
       )}>{label}</span>
     </div>
   );
