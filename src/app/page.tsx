@@ -49,10 +49,28 @@ export default function Home() {
         });
         
         const data = await response.json();
-        extractedText = data.text || "";
+
+        if (!response.ok) {
+          throw new Error(data.details || data.error || 'PDF extraction failed');
+        }
+
+        extractedText = data.text || '';
+
+        // If text is still empty, show a specific message in the editor
+        if (extractedText.trim().length < 20) {
+          setDocType('Generic');
+          setFields([{
+            label: '⚠️ Extraction Notice',
+            value: data.error || 'This PDF appears to be image-based (scanned). Please export it as a JPG or PNG and upload the image version for OCR-based extraction.',
+            confidence: 0,
+            source: 'unmapped',
+          }]);
+          setIsProcessing(false);
+          return;
+        }
       } else if (selectedFile.type.startsWith('image/')) {
         const { extractTextFromImage } = await import('@/lib/ocr');
-        extractedText = await extractTextFromImage(selectedFile) || "";
+        extractedText = await extractTextFromImage(selectedFile) || '';
       }
 
       const { classifyAndParse } = await import('@/lib/parser');
