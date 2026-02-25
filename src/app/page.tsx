@@ -135,10 +135,10 @@ export default function Home() {
 
         <div className="p-6 flex flex-col items-center justify-center space-y-4 pb-8 overflow-hidden">
           <div className={cn(
-            "bg-white p-3 rounded-xl shadow-glow flex items-center justify-center transition-all duration-500 overflow-hidden",
-            isSidebarHovered ? "w-[120px] h-[120px]" : "w-10 h-10 p-1.5"
+            "flex items-center justify-center transition-all duration-500 overflow-hidden",
+            isSidebarHovered ? "w-[120px] h-[120px]" : "w-10 h-10"
           )}>
-            <img src="/updated_icon.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain" />
+            <img src="/updated_icon.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
           <div className={cn(
             "flex flex-col items-center justify-center transition-all duration-500 overflow-hidden whitespace-nowrap",
