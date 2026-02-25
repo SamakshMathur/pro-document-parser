@@ -29,81 +29,83 @@ interface VisualDashboardProps {
 
 export const VisualDashboard: React.FC<VisualDashboardProps> = ({ onFileSelect, isProcessing }) => {
   return (
-    <div className="relative w-full h-full flex items-center justify-center p-4 overflow-hidden select-none">
-      {/* Background SVG for curved connector lines */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }}>
+    <div className="relative w-full h-full flex items-center justify-center p-8 overflow-hidden select-none bg-slate-50/30">
+      {/* Background SVG for curved connector lines - Using relative viewBox for better scaling */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" style={{ zIndex: 0 }}>
         <defs>
           <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(10, 147, 150, 0.1)" />
-            <stop offset="50%" stopColor="rgba(10, 147, 150, 0.4)" />
-            <stop offset="100%" stopColor="rgba(10, 147, 150, 0.1)" />
+            <stop offset="0%" stopColor="rgba(10, 147, 150, 0.2)" />
+            <stop offset="50%" stopColor="rgba(10, 147, 150, 0.6)" />
+            <stop offset="100%" stopColor="rgba(10, 147, 150, 0.2)" />
           </linearGradient>
+           <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
         </defs>
         
-        {/* Left side connections */}
-        <path d="M 150,150 Q 350,150 450,350" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" className="animate-pulse" />
-        <path d="M 150,250 Q 350,250 450,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 150,350 Q 350,350 450,410" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 150,450 Q 350,450 450,440" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 150,550 Q 350,550 450,470" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        {/* Left side connections (Inputs to Hub) */}
+        <path d="M 120,80 Q 300,80 500,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" className="animate-pulse" filter="url(#glow)" />
+        <path d="M 120,180 Q 300,180 500,300" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,280 Q 300,280 500,320" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,380 Q 300,380 500,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,480 Q 300,480 500,360" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        <path d="M 120,580 Q 300,580 500,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
 
-        {/* Right side connections */}
-        <path d="M 850,150 Q 650,150 550,350" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 850,300 Q 650,300 550,400" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 850,450 Q 650,450 550,450" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
-        <path d="M 850,600 Q 650,600 550,500" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
+        {/* Right side connections (Hub to Outcomes) */}
+        <path d="M 880,100 Q 700,100 500,280" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
+        <path d="M 880,220 Q 700,220 500,310" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,340 Q 700,340 500,330" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,460 Q 700,460 500,350" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+        <path d="M 880,580 Q 700,580 500,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
       </svg>
 
-      <div className="relative z-10 w-full flex items-center justify-between max-w-7xl">
+      <div className="relative z-10 w-full flex items-center justify-between max-w-7xl h-full">
         {/* Left Column: Input Types */}
-        <div className="flex flex-col space-y-8">
-          <InputNode icon={<FileText size={18} />} label="Table data" />
-          <InputNode icon={<Stethoscope size={18} />} label="Medical reports" />
-          <InputNode icon={<ShieldCheck size={18} />} label="Insurance claims" />
-          <InputNode icon={<Layout size={18} />} label="Complex layouts" />
-          <InputNode icon={<ImageIcon size={18} />} label="Long images" />
-          <InputNode icon={<RotateCw size={18} />} label="Tilted images" />
+        <div className="flex flex-col space-y-10 lg:space-y-14">
+          <InputNode icon={<FileText size={20} />} label="Table data" />
+          <InputNode icon={<Stethoscope size={20} />} label="Medical reports" />
+          <InputNode icon={<ShieldCheck size={20} />} label="Insurance claims" />
+          <InputNode icon={<Layout size={20} />} label="Complex layouts" />
+          <InputNode icon={<ImageIcon size={20} />} label="Long images" />
+          <InputNode icon={<RotateCw size={20} />} label="Tilted images" />
         </div>
 
         {/* Center: Processing Hub */}
-        <div className="flex-1 flex flex-col items-center justify-center px-12 space-y-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 lg:px-12 space-y-8 lg:space-y-12">
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-[24px] blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-            <div className="relative bg-white p-2 rounded-[22px] shadow-2xl min-w-[320px]">
+            <div className="absolute -inset-2 bg-gradient-to-r from-primary/30 to-secondary/30 rounded-[32px] blur-xl opacity-30 group-hover:opacity-60 transition duration-1000"></div>
+            <div className="relative bg-white p-3 rounded-[28px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-100 min-w-[340px]">
                <FileUpload onFileSelect={onFileSelect} isLoading={isProcessing} />
             </div>
             
             {/* Animated Ring of Light during processing */}
             {isProcessing && (
-              <div className="absolute inset-0 rounded-[22px] border-4 border-primary border-t-transparent animate-spin"></div>
+              <div className="absolute -inset-1 rounded-[30px] border-4 border-dotted border-primary animate-[spin_4s_linear_infinite]"></div>
             )}
           </div>
           
-          <div className="text-center space-y-2 pointer-events-none">
-            <h3 className="text-2xl font-bold font-secondary text-slate-900 tracking-tight">Intelligence Neural Core</h3>
-            <p className="text-sm text-slate-500 max-w-sm">
-              Ingesting and structuring unstructured artifacts with 98.5% precision.
+          <div className="text-center space-y-3 pointer-events-none">
+            <h3 className="text-3xl font-extrabold font-secondary text-slate-900 tracking-tight">Intelligence Neural Core</h3>
+            <div className="flex items-center justify-center space-x-3">
+              <span className="h-[1px] w-6 bg-slate-200"></span>
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-[0.2em]">Next-Gen Processing</p>
+              <span className="h-[1px] w-6 bg-slate-200"></span>
+            </div>
+            <p className="text-slate-400 text-sm max-w-sm mx-auto">
+              Real-time classification and semantic extraction with hyper-accurate OCR technology.
             </p>
           </div>
         </div>
 
         {/* Right Column: Processing Outcomes */}
-        <div className="flex flex-col space-y-12">
-          <OutputNode icon={<FileSearch size={24} />} label="Information search (RAG)" active color="bg-slate-50" />
-          <div className="relative">
-            <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center">
-              <Plus size={10} className="text-slate-400" />
-            </div>
-             <OutputNode icon={<RotateCw size={24} />} iconClass="opacity-20" color="bg-slate-50/30" label="" hideText />
-          </div>
-          <OutputNode icon={<Zap size={24} />} label="Process automation" color="bg-primary/5" iconClass="text-primary" />
-          <OutputNode icon={<Search size={24} />} label="Summarization" color="bg-emerald-50" />
-          <div className="relative">
-             <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-slate-200 bg-white flex items-center justify-center">
-              <Plus size={10} className="text-slate-400" />
-            </div>
-            <OutputNode icon={<MessageSquare size={24} />} label="Contextual Q&A" color="bg-rose-50" />
-          </div>
+        <div className="flex flex-col space-y-8 lg:space-y-10">
+          <OutputNode icon={<FileSearch size={22} />} label="Information search (RAG)" active color="bg-white" />
+          <OutputNode icon={<Zap size={22} />} label="Classification Engine" color="bg-primary/[0.03]" iconClass="text-primary" />
+          <OutputNode icon={<RotateCw size={22} />} label="Contextual Refinement" color="bg-slate-50/50" />
+          <OutputNode icon={<Layout size={22} />} label="Process Automation" color="bg-emerald-50/30" />
+          <OutputNode icon={<Search size={22} />} label="Smart Summarization" color="bg-indigo-50/30" />
+          <OutputNode icon={<MessageSquare size={22} />} label="Contextual Q&A" color="bg-rose-50/30" />
         </div>
       </div>
     </div>
