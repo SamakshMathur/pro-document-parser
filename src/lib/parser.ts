@@ -55,8 +55,13 @@ const RESUME_ANCHORS: string[] = [
 ];
 
 const INVOICE_ANCHORS: string[] = [
-  'BILL TO', 'SHIP TO', 'INVOICE DETAILS', 'PAYMENT DETAILS', 'LINE ITEMS',
-  'SERVICES RENDERED', 'TERMS AND CONDITIONS', 'NOTES',
+  'BILL TO', 'BILLED TO', 'SHIP TO', 'SHIPPED TO',
+  'INVOICE DETAILS', 'INVOICE INFORMATION',
+  'PAYMENT DETAILS', 'PAYMENT SUMMARY', 'PAYMENT SUMNARY',  // OCR typo variant
+  'LINE ITEMS', 'ITEMS', 'SERVICES', 'SERVICES RENDERED', 'DESCRIPTION',
+  'PAYABLE INFORMATION', 'PAYABLE TO',
+  'TERMS AND CONDITIONS', 'NOTES', 'ADDITIONAL NOTES',
+  'SUBTOTAL', 'TOTAL', 'TOTAL AMOUNT', 'GRAND TOTAL',
 ];
 
 // ============================================================
@@ -268,6 +273,37 @@ function extractKeyValuePairs(
     fields.push({ label: rawLabel, value, confidence: 0.92, source: 'structured' });
     markLineConsumed(lines, consumed, rawLabel);
   }
+
+  // --- Invoice-specific: standalone value lines (e.g. "Invoice #1234") ---
+  lines.forEach((line, idx) => {
+    if (consumed.has(idx)) return;
+    const invoiceNumMatch = line.match(/^Invoice\s*#?\s*([\w\-]+)$/i);
+    if (invoiceNumMatch) {
+      if (!seenKeys.has('invoice number')) {
+        fields.push({ label: 'Invoice Number', value: invoiceNumMatch[1], confidence: 0.97, source: 'structured' });
+        seenKeys.add('invoice number');
+        consumed.add(idx);
+      }
+    }
+    const totalMatch = line.match(/^(?:TOTAL|TOTAL AMOUNT|GRAND TOTAL)[:\s]+([\$\£\€₹][\d,\.]+)$/i);
+    if (totalMatch && !seenKeys.has('total amount')) {
+      fields.push({ label: 'Total Amount', value: totalMatch[1], confidence: 0.98, source: 'structured' });
+      seenKeys.add('total amount');
+      consumed.add(idx);
+    }
+    const subtotalMatch = line.match(/^(?:SUBTOTAL|SUB-TOTAL|Subtotalm)[:\s]+([\$\£\€₹][\d,\.]+)/i);
+    if (subtotalMatch && !seenKeys.has('subtotal')) {
+      fields.push({ label: 'Subtotal', value: subtotalMatch[1], confidence: 0.97, source: 'structured' });
+      seenKeys.add('subtotal');
+      consumed.add(idx);
+    }
+    const discountMatch = line.match(/^Discount\s*\(?([\d\.]+%?)\)?[:\s]+([\$\£\€₹][\d,\.]+)/i);
+    if (discountMatch && !seenKeys.has('discount')) {
+      fields.push({ label: `Discount (${discountMatch[1]})`, value: discountMatch[2], confidence: 0.95, source: 'structured' });
+      seenKeys.add('discount');
+      consumed.add(idx);
+    }
+  });
 }
 
 function extractTables(lines: string[], tables: TableData[], consumed: Set<number>) {
@@ -278,7 +314,8 @@ function extractTables(lines: string[], tables: TableData[], consumed: Set<numbe
     if (consumed.has(i)) continue;
     const parts = lines[i].split(/\s{2,}|\t|\|/).map(p => p.trim()).filter(p => p.length > 0);
 
-    if (parts.length >= 3) {
+    // Accept 2+ parts to catch invoice rows like "Item 1  1  $1000  $1000"
+    if (parts.length >= 2) {
       if (!inTable) {
         inTable = true;
         currentTable = { table_name: `Data Table ${tables.length + 1}`, columns: parts, rows: [] };
