@@ -20,19 +20,35 @@ interface DataEditorProps {
 
 export const DataEditor: React.FC<DataEditorProps> = ({ docType, fields, onFieldChange, isProcessing, onSave }) => {
   const exportAsJSON = () => {
+    // Advanced structuring for complex fields
+    const structuredFields: Record<string, any> = {};
+    
+    fields.forEach(field => {
+      const key = field.label;
+      const val = field.value.trim();
+      
+      // Attempt to structure multi-line string text fields (like Skills, Projects, Experience) into arrays
+      if (val.includes('\n') || ['Skills', 'Experience', 'Education', 'Projects'].includes(key)) {
+         structuredFields[key] = val.split('\n').map(item => item.trim()).filter(Boolean);
+      } else {
+         structuredFields[key] = val;
+      }
+    });
+
     const data = {
-      documentType: docType,
-      processedAt: new Date().toISOString(),
-      fields: fields.reduce((acc: any, field) => {
-        acc[field.label] = field.value;
-        return acc;
-      }, {})
+      metadata: {
+        documentClass: docType,
+        extractedAt: new Date().toISOString(),
+        totalFieldsFound: fields.length
+      },
+      extractedData: structuredFields
     };
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `parsed_data_${Date.now()}.json`;
+    link.download = `Document_Data_${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };
