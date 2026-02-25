@@ -8,6 +8,7 @@ import { DataEditor } from '@/components/DataEditor';
 import { DocumentGallery } from '@/components/DocumentGallery';
 import { VisualDashboard } from '@/components/VisualDashboard';
 import { saveDocument, SavedDocument } from '@/lib/storage';
+import type { MasterParsedData } from '@/lib/parser';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -21,6 +22,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [docType, setDocType] = useState<string | null>(null);
   const [fields, setFields] = useState<any[]>([]);
+  const [masterData, setMasterData] = useState<MasterParsedData | undefined>(undefined);
   const [currentView, setCurrentView] = useState<'dashboard' | 'documents' | 'documentDetail'>('dashboard');
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
@@ -58,6 +60,7 @@ export default function Home() {
 
       setDocType(result.type);
       setFields(result.fields);
+      setMasterData(result.masterData);
     } catch (error) {
       console.error("Processing failed:", error);
       setDocType('Generic');
@@ -230,6 +233,7 @@ export default function Home() {
                     onFieldChange={handleFieldChange}
                     isProcessing={isProcessing}
                     onSave={!selectedDocId ? handleSaveDocument : undefined}
+                    masterData={masterData}
                   />
                 </div>
               </div>
