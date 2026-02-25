@@ -26,8 +26,29 @@ export interface CoverageAudit {
   missing_suggestions: string[];
 }
 
+// Universal document type — extensible
+export type DocumentType =
+  | 'Resume'
+  | 'Invoice'
+  | 'Legal Contract'
+  | 'Bank Statement'
+  | 'Medical Record'
+  | 'Tax Form'
+  | 'Purchase Order'
+  | 'Report'
+  | 'Academic Transcript'
+  | 'Insurance Document'
+  | 'Prescription'
+  | 'NDA'
+  | 'Employment Contract'
+  | 'Shipping Document'
+  | 'Financial Statement'
+  | 'Receipt'
+  | 'Form'
+  | 'Generic';
+
 export interface MasterParsedData {
-  document_type: 'Resume' | 'Invoice' | 'Legal' | 'Generic';
+  document_type: DocumentType;
   structured_data: ParsedField[];
   tables: TableData[];
   unmapped_data: ParsedField[];
@@ -37,32 +58,166 @@ export interface MasterParsedData {
 
 // Keep the legacy interface for backwards-compat with existing UI consumers
 export interface ParsedData {
-  type: 'Resume' | 'Invoice' | 'Legal' | 'Generic';
+  type: DocumentType;
   fields: ParsedField[];
   tables?: TableData[];
   masterData?: MasterParsedData;
 }
 
-// ---- Semantic Anchors ----
+// ============================================================
+// UNIVERSAL SEMANTIC ANCHOR REGISTRY
+// One anchor set per document type. Generic uses structural detection.
+// ============================================================
 
-const RESUME_ANCHORS: string[] = [
-  'EDUCATION', 'EXPERIENCE', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE',
-  'PROJECTS', 'SKILLS', 'TECHNICAL SKILLS', 'SOFT SKILLS', 'CORE COMPETENCIES',
-  'SUMMARY', 'PROFESSIONAL SUMMARY', 'OBJECTIVE', 'PROFILE',
-  'ACHIEVEMENTS', 'CERTIFICATIONS', 'LICENSES', 'AWARDS',
-  'LANGUAGES', 'INTERESTS', 'HOBBIES', 'VOLUNTEER', 'PUBLICATIONS',
-  'REFERENCES', 'COURSES', 'TRAINING', 'ACTIVITIES',
-];
+const ANCHOR_MAP: Record<string, string[]> = {
+  'Resume': [
+    'EDUCATION', 'EXPERIENCE', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE',
+    'PROJECTS', 'SKILLS', 'TECHNICAL SKILLS', 'SOFT SKILLS', 'CORE COMPETENCIES',
+    'SUMMARY', 'PROFESSIONAL SUMMARY', 'OBJECTIVE', 'PROFILE',
+    'ACHIEVEMENTS', 'CERTIFICATIONS', 'LICENSES', 'AWARDS',
+    'LANGUAGES', 'INTERESTS', 'HOBBIES', 'VOLUNTEER', 'PUBLICATIONS',
+    'REFERENCES', 'COURSES', 'TRAINING', 'ACTIVITIES',
+  ],
+  'Invoice': [
+    'BILL TO', 'BILLED TO', 'SHIP TO', 'SHIPPED TO',
+    'INVOICE DETAILS', 'INVOICE INFORMATION',
+    'PAYMENT DETAILS', 'PAYMENT SUMMARY', 'PAYMENT SUMNARY',
+    'LINE ITEMS', 'ITEMS', 'SERVICES', 'SERVICES RENDERED', 'DESCRIPTION',
+    'PAYABLE INFORMATION', 'PAYABLE TO',
+    'TERMS AND CONDITIONS', 'NOTES', 'ADDITIONAL NOTES',
+    'SUBTOTAL', 'TOTAL', 'TOTAL AMOUNT', 'GRAND TOTAL',
+  ],
+  'Legal Contract': [
+    'PARTIES', 'RECITALS', 'DEFINITIONS', 'TERM', 'SCOPE OF WORK',
+    'OBLIGATIONS', 'REPRESENTATIONS', 'WARRANTIES', 'INDEMNIFICATION',
+    'LIMITATION OF LIABILITY', 'TERMINATION', 'GOVERNING LAW',
+    'DISPUTE RESOLUTION', 'MISCELLANEOUS', 'SIGNATURES',
+  ],
+  'Bank Statement': [
+    'ACCOUNT SUMMARY', 'ACCOUNT DETAILS', 'TRANSACTION HISTORY',
+    'DEPOSITS', 'WITHDRAWALS', 'CREDITS', 'DEBITS', 'FEES',
+    'OPENING BALANCE', 'CLOSING BALANCE', 'INTEREST EARNED',
+  ],
+  'Medical Record': [
+    'PATIENT INFORMATION', 'CHIEF COMPLAINT', 'HISTORY OF PRESENT ILLNESS',
+    'PAST MEDICAL HISTORY', 'MEDICATIONS', 'ALLERGIES', 'VITAL SIGNS',
+    'PHYSICAL EXAMINATION', 'ASSESSMENT', 'PLAN', 'DIAGNOSIS',
+    'LABORATORY RESULTS', 'IMAGING', 'PROCEDURES', 'DISCHARGE SUMMARY',
+  ],
+  'Tax Form': [
+    'PERSONAL INFORMATION', 'FILING STATUS', 'INCOME', 'DEDUCTIONS',
+    'CREDITS', 'TAX DUE', 'REFUND', 'SIGNATURE',
+    'WAGES AND SALARIES', 'BUSINESS INCOME', 'CAPITAL GAINS',
+  ],
+  'Purchase Order': [
+    'VENDOR INFORMATION', 'SHIP TO', 'BILL TO', 'ORDER DETAILS',
+    'LINE ITEMS', 'DELIVERY DATE', 'PAYMENT TERMS', 'TOTAL', 'NOTES',
+  ],
+  'Report': [
+    'EXECUTIVE SUMMARY', 'INTRODUCTION', 'BACKGROUND', 'METHODOLOGY',
+    'FINDINGS', 'ANALYSIS', 'RESULTS', 'CONCLUSION',
+    'RECOMMENDATIONS', 'REFERENCES', 'APPENDIX',
+  ],
+  'Academic Transcript': [
+    'STUDENT INFORMATION', 'PROGRAM OF STUDY', 'COURSES', 'GRADES',
+    'CREDITS', 'GPA', 'HONORS', 'DEGREE AWARDED', 'INSTITUTION',
+  ],
+  'Insurance Document': [
+    'POLICY INFORMATION', 'INSURED', 'BENEFICIARY', 'COVERAGE',
+    'PREMIUM', 'DEDUCTIBLE', 'EXCLUSIONS', 'CLAIMS PROCESS', 'CONTACT',
+  ],
+  'Prescription': [
+    'PATIENT', 'PRESCRIBER', 'DATE', 'MEDICATION', 'DOSAGE',
+    'FREQUENCY', 'DURATION', 'REFILLS', 'INSTRUCTIONS', 'WARNINGS',
+  ],
+  'NDA': [
+    'PARTIES', 'DEFINITIONS', 'CONFIDENTIAL INFORMATION',
+    'OBLIGATIONS', 'EXCLUSIONS', 'TERM', 'RETURN OF INFORMATION',
+    'REMEDIES', 'GOVERNING LAW', 'SIGNATURES',
+  ],
+  'Employment Contract': [
+    'EMPLOYER', 'EMPLOYEE', 'POSITION', 'COMMENCEMENT DATE',
+    'COMPENSATION', 'BENEFITS', 'WORKING HOURS', 'PROBATION PERIOD',
+    'LEAVE', 'TERMINATION', 'CONFIDENTIALITY', 'GOVERNING LAW',
+  ],
+  'Shipping Document': [
+    'SHIPPER', 'CONSIGNEE', 'NOTIFY PARTY', 'PORT OF LOADING',
+    'PORT OF DISCHARGE', 'DESCRIPTION OF GOODS', 'PACKAGES',
+    'GROSS WEIGHT', 'FREIGHT', 'INCOTERMS',
+  ],
+  'Financial Statement': [
+    'INCOME STATEMENT', 'BALANCE SHEET', 'CASH FLOW', 'REVENUE',
+    'EXPENSES', 'NET INCOME', 'ASSETS', 'LIABILITIES', 'EQUITY',
+    'NOTES TO FINANCIAL STATEMENTS',
+  ],
+  'Receipt': [
+    'SOLD TO', 'ITEMS PURCHASED', 'SUBTOTAL', 'TAXES', 'TOTAL',
+    'PAYMENT METHOD', 'CHANGE', 'THANK YOU',
+  ],
+  'Form': [
+    'PERSONAL DETAILS', 'CONTACT INFORMATION', 'DECLARATION',
+    'SIGNATURE', 'DATE', 'INSTRUCTIONS',
+  ],
+};
 
-const INVOICE_ANCHORS: string[] = [
-  'BILL TO', 'BILLED TO', 'SHIP TO', 'SHIPPED TO',
-  'INVOICE DETAILS', 'INVOICE INFORMATION',
-  'PAYMENT DETAILS', 'PAYMENT SUMMARY', 'PAYMENT SUMNARY',  // OCR typo variant
-  'LINE ITEMS', 'ITEMS', 'SERVICES', 'SERVICES RENDERED', 'DESCRIPTION',
-  'PAYABLE INFORMATION', 'PAYABLE TO',
-  'TERMS AND CONDITIONS', 'NOTES', 'ADDITIONAL NOTES',
-  'SUBTOTAL', 'TOTAL', 'TOTAL AMOUNT', 'GRAND TOTAL',
-];
+// Fallback for types not listed (Generic)
+const GENERIC_ANCHORS: string[] = [];
+
+// ============================================================
+// UNIVERSAL DOCUMENT TYPE CLASSIFIER
+// Uses keyword scoring — highest score wins.
+// ============================================================
+function detectDocumentType(lower: string, fileName: string): DocumentType {
+  const fn = fileName.toLowerCase();
+
+  const TYPE_PATTERNS: Array<{ type: DocumentType; keywords: RegExp }> = [
+    { type: 'Resume',              keywords: /\b(resume|curriculum vitae|experience|education|skills|objective|references)\b/ },
+    { type: 'Invoice',             keywords: /\b(invoice|bill to|tax invoice|total due|billed to|payable to)\b/ },
+    { type: 'Legal Contract',      keywords: /\b(agreement|contract|this lease|hereby|party of the first|witnesseth|indemnification|governing law)\b/ },
+    { type: 'Bank Statement',      keywords: /\b(bank statement|account summary|transaction history|opening balance|closing balance|debit|credit|deposits|withdrawals)\b/ },
+    { type: 'Medical Record',      keywords: /\b(patient|diagnosis|chief complaint|medications|allergies|vital signs|physical examination|discharge|prescription)\b/ },
+    { type: 'Tax Form',            keywords: /\b(tax return|filing status|adjusted gross income|w-2|1099|taxable income|deductions|irs|refund)\b/ },
+    { type: 'Purchase Order',      keywords: /\b(purchase order|p\.?o\.? number|vendor|delivery date|order date|requested by|ship to)\b/ },
+    { type: 'Report',              keywords: /\b(executive summary|findings|methodology|analysis|recommendations|conclusion|prepared by|submitted to)\b/ },
+    { type: 'Academic Transcript', keywords: /\b(transcript|gpa|grade point|semester|enrolled|credit hours|degree awarded|registrar)\b/ },
+    { type: 'Insurance Document',  keywords: /\b(policy number|insured|beneficiary|coverage|premium|deductible|claim|insurance)\b/ },
+    { type: 'Prescription',        keywords: /\b(prescription|rx|dosage|medication|refills|sig:|dispense|prescriber)\b/ },
+    { type: 'NDA',                 keywords: /\b(non-disclosure|confidential information|nda|proprietary|trade secret|disclosing party|receiving party)\b/ },
+    { type: 'Employment Contract', keywords: /\b(employment agreement|employer|employee|commencement date|probation|compensation|termination notice|offer of employment)\b/ },
+    { type: 'Shipping Document',   keywords: /\b(bill of lading|shipper|consignee|port of|incoterms|gross weight|freight|cargo)\b/ },
+    { type: 'Financial Statement', keywords: /\b(balance sheet|income statement|cash flow|revenue|net income|liabilities|equity|assets|profit|loss)\b/ },
+    { type: 'Receipt',             keywords: /\b(receipt|thank you for your purchase|items purchased|change due|payment method|cashier)\b/ },
+    { type: 'Form',                keywords: /\b(form|application|please complete|tick where applicable|signature required|official use only)\b/ },
+  ];
+
+  // Score each type
+  let bestType: DocumentType = 'Generic';
+  let bestScore = 0;
+
+  for (const { type, keywords } of TYPE_PATTERNS) {
+    const matches = lower.match(new RegExp(keywords.source, 'g')) || [];
+    if (matches.length > bestScore) {
+      bestScore = matches.length;
+      bestType = type;
+    }
+  }
+
+  // File name hints (fallback signal if text score is low)
+  if (bestScore === 0) {
+    if (/resume|cv/.test(fn)) return 'Resume';
+    if (/invoice|inv/.test(fn)) return 'Invoice';
+    if (/contract|agreement|nda/.test(fn)) return 'Legal Contract';
+    if (/statement|bank/.test(fn)) return 'Bank Statement';
+    if (/medical|patient|rx/.test(fn)) return 'Medical Record';
+    if (/tax|form|w2|1099/.test(fn)) return 'Tax Form';
+    if (/report|analysis/.test(fn)) return 'Report';
+    if (/po|purchase.order/.test(fn)) return 'Purchase Order';
+    if (/transcript|grade/.test(fn)) return 'Academic Transcript';
+  }
+
+  return bestType;
+}
+
 
 // ============================================================
 // MAIN ENTRY POINT
@@ -105,27 +260,24 @@ function runMasterEngine(text: string, fileName: string): MasterParsedData {
   const lines = text.split('\n').map(l => l.trim());
   const consumedLines = new Set<number>();
 
-  // ---------- 1. TYPE DETECTION ----------
+  // ---------- 1. UNIVERSAL TYPE DETECTION ----------
   const lower = text.toLowerCase();
-  let document_type: MasterParsedData['document_type'] = 'Generic';
-  if (/invoice|bill to|bill from|total due|tax invoice/i.test(lower)) document_type = 'Invoice';
-  else if (/experience|education|skills|resume|curriculum vitae/i.test(lower)) document_type = 'Resume';
-  else if (/agreement|contract|this lease|hereby|parties/i.test(lower)) document_type = 'Legal';
+  const document_type: DocumentType = detectDocumentType(lower, fileName);
 
   // ---------- 2. PASS 1 — STRUCTURED EXTRACTION ----------
   const structuredFields: ParsedField[] = [];
   const tables: TableData[] = [];
 
-  // 2a. Global Entities (email, phone, URL, dates)
+  // 2a. Global Entities (email, phone, URL)
   extractGlobalEntities(text, structuredFields, lines, consumedLines);
 
-  // 2b. Document-type-specific identity fields
+  // 2b. Type-specific identity extraction
   if (document_type === 'Resume') {
     extractResumeIdentity(lines, structuredFields, consumedLines);
   }
 
-  // 2c. Section-Anchored extraction
-  const anchors = document_type === 'Invoice' ? INVOICE_ANCHORS : RESUME_ANCHORS;
+  // 2c. Section-Anchored extraction using per-type anchor map
+  const anchors = ANCHOR_MAP[document_type] ?? GENERIC_ANCHORS;
   extractAnchoredSections(lines, anchors, structuredFields, consumedLines);
 
   // 2d. Key-Value sweep across the whole document
