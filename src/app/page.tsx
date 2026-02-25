@@ -6,6 +6,7 @@ import { FileUpload } from '@/components/FileUpload';
 import { DocumentViewer } from '@/components/DocumentViewer';
 import { DataEditor } from '@/components/DataEditor';
 import { DocumentGallery } from '@/components/DocumentGallery';
+import { VisualDashboard } from '@/components/VisualDashboard';
 import { saveDocument, SavedDocument } from '@/lib/storage';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -108,36 +109,62 @@ export default function Home() {
     };
   }, [fileUrl]);
 
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+
   return (
     <div className="flex h-screen bg-background overflow-hidden font-sans text-text-primary">
-      {/* Sidebar - Premium Minimal Design */}
-      <aside className="w-20 lg:w-64 flex flex-col border-r border-border-subtle bg-surface-base transition-all duration-300">
-        <div className="p-6 flex flex-col items-center justify-center space-y-4 pb-8">
-          <div className="flex items-center justify-center w-[120px] h-[120px] overflow-hidden">
-            <img src="/updated_icon.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain drop-shadow-md" />
+      {/* Sidebar - Collapsible Premium Design */}
+      <aside 
+        onMouseEnter={() => setIsSidebarHovered(true)}
+        onMouseLeave={() => setIsSidebarHovered(false)}
+        className={cn(
+          "flex flex-col border-r border-border-subtle bg-surface-base transition-all duration-500 ease-in-out z-20 shadow-2xl relative",
+          isSidebarHovered ? "w-64" : "w-20"
+        )}
+      >
+        {/* Hover Trigger indicator when collapsed */}
+        {!isSidebarHovered && (
+          <div className="absolute inset-y-0 left-0 w-2 h-full flex items-center justify-center opacity-30 group-hover:opacity-100 transition-opacity">
+            <div className="space-y-1">
+              <div className="w-1 h-4 bg-white/20 rounded-full" />
+              <div className="w-1 h-4 bg-white/20 rounded-full" />
+              <div className="w-1 h-4 bg-white/20 rounded-full" />
+            </div>
           </div>
-          <div className="flex flex-col items-center justify-center hidden lg:flex">
+        )}
+
+        <div className="p-6 flex flex-col items-center justify-center space-y-4 pb-8 overflow-hidden">
+          <div className={cn(
+            "bg-white p-3 rounded-xl shadow-glow flex items-center justify-center transition-all duration-500 overflow-hidden",
+            isSidebarHovered ? "w-[120px] h-[120px]" : "w-10 h-10 p-1.5"
+          )}>
+            <img src="/updated_icon.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain" />
+          </div>
+          <div className={cn(
+            "flex flex-col items-center justify-center transition-all duration-500 overflow-hidden whitespace-nowrap",
+            isSidebarHovered ? "opacity-100 h-auto mt-4" : "opacity-0 h-0 mt-0"
+          )}>
             <span className="text-xs font-bold tracking-widest text-white/80 uppercase font-secondary">PRO Document</span>
             <span className="text-xl font-black tracking-tight text-white font-primary">Parser</span>
           </div>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 space-y-2 mt-4 overflow-hidden">
           <NavItem 
             icon={<Layout size={20} />} 
             label="Dashboard" 
             active={currentView === 'dashboard'} 
             onClick={() => setCurrentView('dashboard')} 
+            isExpanded={isSidebarHovered}
           />
           <NavItem 
             icon={<Layers size={20} />} 
             label="Documents" 
             active={currentView === 'documents'}
             onClick={() => setCurrentView('documents')}
+            isExpanded={isSidebarHovered}
           />
         </nav>
-
-
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden relative bg-surface-base">
@@ -164,21 +191,10 @@ export default function Home() {
         </header>
 
         {/* Dynamic Split Screen Body */}
-        <div className="flex-1 p-8 overflow-hidden bg-gradient-to-br from-white via-slate-50 to-slate-100 rounded-tl-2xl shadow-[inset_0_4px_20px_rgba(0,0,0,0.05)] border-t border-l border-slate-200">
+        <div className="flex-1 overflow-hidden bg-gradient-to-br from-slate-50 relative via-white to-slate-100 rounded-tl-[40px] shadow-[inset_0_4px_40px_rgba(0,0,0,0.04)] border-t border-l border-slate-200">
           {currentView === 'dashboard' ? (
-            <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto space-y-8 animate-fade-in">
-              <div className="text-center space-y-2">
-                <h3 className="text-3xl font-bold font-secondary text-slate-900 tracking-tight">Intelligent Document Intelligence</h3>
-                <p className="text-slate-500">Ingest, classify, and structure data from any document format with AI-powered precision.</p>
-              </div>
-              <div className="w-full">
-                <FileUpload onFileSelect={handleFileSelect} isLoading={false} />
-              </div>
-              <div className="grid grid-cols-3 gap-6 w-full">
-                <FeatureCard title="98.5%" subtitle="Accuracy Engine" />
-                <FeatureCard title="< 2s" subtitle="Latency" />
-                <FeatureCard title="AES-256" subtitle="Encrypted" />
-              </div>
+            <div className="h-full w-full animate-fade-in">
+              <VisualDashboard onFileSelect={handleFileSelect} isProcessing={isProcessing} />
             </div>
           ) : currentView === 'documents' ? (
              <DocumentGallery onSelectDocument={handleSelectSavedDocument} />
@@ -225,7 +241,7 @@ export default function Home() {
   );
 }
 
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
+function NavItem({ icon, label, active = false, onClick, isExpanded = true }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, isExpanded?: boolean }) {
   return (
     <div 
       onClick={onClick}
@@ -236,7 +252,10 @@ function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNo
         : "text-white/60 hover:bg-white/10 hover:text-white"
     )}>
       {icon}
-      <span className="text-sm font-semibold hidden lg:block tracking-wide">{label}</span>
+      <span className={cn(
+        "text-sm font-semibold tracking-wide transition-all duration-500 overflow-hidden whitespace-nowrap",
+        isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0"
+      )}>{label}</span>
     </div>
   );
 }
