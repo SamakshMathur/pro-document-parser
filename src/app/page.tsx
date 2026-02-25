@@ -113,8 +113,8 @@ export default function Home() {
       {/* Sidebar - Premium Minimal Design */}
       <aside className="w-20 lg:w-64 flex flex-col border-r border-border-subtle bg-surface-base transition-all duration-300">
         <div className="p-6 flex flex-col items-center justify-center space-y-4 pb-8">
-          <div className="bg-white p-3 rounded-xl shadow-glow overflow-hidden flex items-center justify-center w-[120px] h-[120px] border border-primary/20">
-            <img src="/logo.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain" />
+          <div className="flex items-center justify-center w-[120px] h-[120px] overflow-hidden">
+            <img src="/updated_icon.png" alt="PRO Document Parser Logo" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           <div className="flex flex-col items-center justify-center hidden lg:flex">
             <span className="text-xs font-bold tracking-widest text-white/80 uppercase font-secondary">PRO Document</span>
