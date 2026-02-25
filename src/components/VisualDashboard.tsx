@@ -52,12 +52,12 @@ export const VisualDashboard: React.FC<VisualDashboardProps> = ({ onFileSelect, 
           <path d="M 120,400 Q 250,400 330,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2" strokeDasharray="8,4" />
           <path d="M 120,500 Q 250,500 330,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
 
-          {/* Right side connections (Outcome edges to Hub edge) */}
-          <path d="M 880,100 Q 750,100 670,220" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
-          <path d="M 880,220 Q 750,220 670,260" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-          <path d="M 880,340 Q 750,340 670,300" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-          <path d="M 880,460 Q 750,420 670,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
-          <path d="M 880,580 Q 750,460 670,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
+          {/* Right side connections (Outcome edges to Hub edge) - Ends at left edge of cards to avoid text overlap */}
+          <path d="M 770,100 Q 750,100 670,220" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
+          <path d="M 770,220 Q 750,220 670,260" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+          <path d="M 770,340 Q 750,340 670,300" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+          <path d="M 770,460 Q 750,420 670,340" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" />
+          <path d="M 770,580 Q 750,460 670,380" fill="none" stroke="url(#lineGradient)" strokeWidth="2.5" strokeDasharray="10,5" filter="url(#glow)" />
         </svg>
 
         <div className="relative z-10 w-full flex items-center justify-between max-w-7xl h-full">
