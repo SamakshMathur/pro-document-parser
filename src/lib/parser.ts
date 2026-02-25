@@ -117,78 +117,99 @@ function extractEverythingContextual(text: string, lines: string[], fileName: st
   };
 
   const consumedLines = new Set<number>();
-
-  // --- 1. Type Detection ---
   const lowerText = text.toLowerCase();
-  if (lowerText.includes('invoice') || lowerText.includes('bill to') || lowerText.includes('total amount')) result.document_type = "Invoice";
-  else if (lowerText.includes('experience') || lowerText.includes('education') || lowerText.includes('skills')) result.document_type = "Resume";
-  else if (lowerText.includes('agreement') || lowerText.includes('contract')) result.document_type = "Legal";
 
-  // --- 2. Anchor Discovery & Sectioning (Resume Path) ---
-  if (result.document_type === "Resume") {
-    // Identity Extraction (Top of Doc)
-    for (let i = 0; i < Math.min(lines.length, 5); i++) {
-       if (lines[i].length > 3 && lines[i].split(' ').length <= 4 && !lines[i].includes(':')) {
-         result.fields['candidate_name'] = { value: lines[i], confidence: 0.98 };
-         consumedLines.add(i);
-         break;
-       }
+  // --- 1. Enhanced Type Detection ---
+  if (/invoice|bill to|bill from|total due|tax invoice/i.test(lowerText)) result.document_type = "Invoice";
+  else if (/experience|education|skills|resume|curriculum vitae/i.test(lowerText)) result.document_type = "Resume";
+  else if (/agreement|contract|this lease|hereby|parties/i.test(lowerText)) result.document_type = "Legal";
+
+  // --- 2. Global Entity Extraction (Email, Phone, Links) ---
+  const emailRegex = /[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+\.[a-zA-z0-9]{2,}/gi;
+  (text.match(emailRegex) || []).forEach((email, idx) => {
+    result.fields[`contact_email${idx > 0 ? `_${idx + 1}` : ''}`] = { value: email, confidence: 0.99 };
+  });
+
+  const phoneRegex = /[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/g;
+  (text.match(phoneRegex) || []).forEach((phone, idx) => {
+    result.fields[`contact_phone${idx > 0 ? `_${idx + 1}` : ''}`] = { value: phone, confidence: 0.98 };
+  });
+
+  // --- 3. Semantic Sectioning (Anchors) ---
+  const sections: { header: string; startIdx: number; endIdx: number }[] = [];
+  
+  // Pre-scan for anchors to define boundaries
+  lines.forEach((line, idx) => {
+    const normalized = line.toUpperCase().replace(/[^A-Z\s]/g, '').trim();
+    if (RESUME_ANCHORS.includes(normalized) && line.length < 50) {
+      if (sections.length > 0) sections[sections.length - 1].endIdx = idx;
+      sections.push({ header: line, startIdx: idx, endIdx: lines.length });
     }
-    
-    // Email & Phone
-    const emailMatch = text.match(/[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+\.[a-zA-z0-9]{2,}/i);
-    if (emailMatch) result.fields['contact_email'] = { value: emailMatch[0], confidence: 0.99 };
-    
-    const phoneMatch = text.match(/[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}/);
-    if (phoneMatch) result.fields['contact_phone'] = { value: phoneMatch[0], confidence: 0.98 };
+  });
 
-    // Section Anchor Split
-    let currentHeader = "Profile";
-    let currentBlock: string[] = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-      if (consumedLines.has(i)) continue;
-      const line = lines[i];
-      const normalizedLine = line.toUpperCase().replace(/[^A-Z\s]/g, '').trim();
+  // If no anchors found for a Resume, fallback to basic blocks
+  if (sections.length === 0 && result.document_type === "Resume") {
+    sections.push({ header: "Candidate Profile", startIdx: 0, endIdx: lines.length });
+  }
+
+  // --- 4. Content Extraction within Sections ---
+  sections.forEach((section, sIdx) => {
+    const sectionLines = lines.slice(section.startIdx, section.endIdx);
+    const sectionText = sectionLines.join('\n');
+    let sectionResidual: string[] = [];
+
+    // CONSUME HEADER
+    consumedLines.add(section.startIdx);
+
+    // Try Key-Value extraction within this section
+    const sectionKvRegex = /^\s*([^:\n]{2,40}):\s*(.+)$/gm;
+    let match;
+    const caughtInThisSection = new Set<string>();
+
+    while ((match = sectionKvRegex.exec(sectionText)) !== null) {
+      const rawLabel = match[1].trim();
+      const value = match[2].trim();
+      const key = rawLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^\w]/g, '');
       
-      const isAnchor = RESUME_ANCHORS.includes(normalizedLine);
-      
-      if (isAnchor) {
-        if (currentBlock.length > 0) {
-          result.raw_sections.push(`${currentHeader}\n${currentBlock.join('\n')}`);
-        }
-        currentHeader = line;
-        currentBlock = [];
-        consumedLines.add(i);
-      } else {
-        currentBlock.push(line);
+      if (key.length > 1 && !caughtInThisSection.has(key)) {
+        result.fields[key] = { value, confidence: 0.95 };
+        caughtInThisSection.add(key);
+        // Mark these lines as consumed
+        sectionLines.forEach((l, lIdx) => {
+          if (l.includes(rawLabel) && l.includes(value)) consumedLines.add(section.startIdx + lIdx);
+        });
       }
     }
-    if (currentBlock.length > 0) {
-      result.raw_sections.push(`${currentHeader}\n${currentBlock.join('\n')}`);
-    }
-  } else {
-    // --- 3. Generic/Invoice Path (Legacy Key-Value + Table) ---
-    const kvRegex = /^\s*([^:\n]{2,40}):\s*(.+)$/gm;
-    let kvMatch;
-    while ((kvMatch = kvRegex.exec(text)) !== null) {
-      const label = kvMatch[1].trim();
-      const value = kvMatch[2].trim();
-      const key = label.toLowerCase().replace(/\s+/g, '_');
-      result.fields[key] = { value, confidence: 0.95 };
-      lines.forEach((l, idx) => { if (l.includes(label) && l.includes(value)) consumedLines.add(idx); });
-    }
 
-    result.tables = detectTablesAndMarkLines(lines, consumedLines);
-    
-    // Capture remaining narrative
-    let currentHeader = "Document Info";
-    let currentBlock: string[] = [];
-    for (let i = 0; i < lines.length; i++) {
-        if (consumedLines.has(i) || lines[i].trim() === "") continue;
-        currentBlock.push(lines[i]);
+    // Capture everything else in this section as "narrative"
+    sectionLines.forEach((l, lIdx) => {
+      const globalIdx = section.startIdx + lIdx;
+      if (!consumedLines.has(globalIdx) && l.trim().length > 0) {
+        sectionResidual.push(l);
+        consumedLines.add(globalIdx);
+      }
+    });
+
+    if (sectionResidual.length > 0) {
+      result.raw_sections.push(`${section.header}\n${sectionResidual.join('\n')}`);
     }
-    if (currentBlock.length > 0) result.raw_sections.push(`${currentHeader}\n${currentBlock.join('\n')}`);
+  });
+
+  // --- 5. Absolute Catch-All (Unprocessed Lines) ---
+  const finalResidual: string[] = [];
+  lines.forEach((line, idx) => {
+    if (!consumedLines.has(idx) && line.trim().length > 0) {
+      finalResidual.push(line);
+    }
+  });
+
+  if (finalResidual.length > 0) {
+    result.raw_sections.push(`Additional Information\n${finalResidual.join('\n')}`);
+  }
+
+  // --- 6. Table Extraction (Specifically for Invoices) ---
+  if (result.document_type === "Invoice") {
+    result.tables = detectTablesAndMarkLines(lines, new Set()); // Tables are non-destructive in this pass
   }
 
   return result;
