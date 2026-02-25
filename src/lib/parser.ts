@@ -5,134 +5,177 @@ export interface ParsedField {
 }
 
 export interface ParsedData {
-  type: 'Resume' | 'Invoice' | 'Generic';
+  type: 'Resume' | 'Invoice' | 'Legal' | 'Generic';
   fields: ParsedField[];
+  tables?: TableData[];
 }
 
-// Layer 4: Validation Logic
-const calculateConfidence = (field: string, value: string): number => {
-  if (!value || value === 'N/A' || value === 'Unknown') return 0.1;
-  
-  const validators: Record<string, (v: string) => number> = {
-    'Email': (v) => /[a-zA-Z0-9.\-_+]+@[a-zA-Z0-9.\-_]+\.[a-zA-Z]{2,}/.test(v) ? 0.99 : 0.4,
-    'Phone': (v) => /^\+?[\d\s\-()]{10,}$/.test(v) ? 0.95 : 0.5,
-    'Full Name': (v) => {
-      const words = v.trim().split(/\s+/);
-      return (words.length >= 2 && words.length <= 4) ? 0.92 : 0.6;
-    },
-    'Total Amount': (v) => /\d/.test(v) ? 0.90 : 0.3,
-    'Vendor Name': (v) => v.length > 3 ? 0.85 : 0.4,
-  };
+export interface TableData {
+  table_name: string;
+  columns: string[];
+  rows: Record<string, any>[];
+}
 
-  const validator = validators[field];
-  return validator ? validator(value) : 0.7;
-};
+interface AdvancedParsedData {
+  document_type: string;
+  fields: Record<string, { value: string; confidence: number; source?: string }>;
+  tables: TableData[];
+  raw_sections: string[];
+  csv_ready: any[];
+  confidence_score: number;
+}
 
+/**
+ * Advanced Document Parsing Engine
+ * Objective: Extract ALL fields, columns, and values dynamically.
+ */
 export const classifyAndParse = async (text: string, fileName: string): Promise<ParsedData> => {
   const safeText = text || "";
   const lowercaseText = safeText.toLowerCase();
-  const lowercaseFileName = (fileName || "").toLowerCase();
-
-  // Weighted Classification for metadata tagging
-  let resumeScore = 0;
-  let invoiceScore = 0;
-
-  if (lowercaseText.includes('experience') || lowercaseText.includes('education') || lowercaseText.includes('skills')) resumeScore += 2;
-  if (lowercaseFileName.includes('resume') || lowercaseFileName.includes('cv')) resumeScore += 3;
-  if (lowercaseText.includes('invoice') || lowercaseText.includes('bill to') || lowercaseText.includes('total amount')) invoiceScore += 2;
-  if (lowercaseFileName.includes('invoice')) invoiceScore += 3;
-
-  let type: 'Resume' | 'Invoice' | 'Generic' = 'Generic';
-  if (invoiceScore > resumeScore && invoiceScore > 0) type = 'Invoice';
-  else if (resumeScore > 0) type = 'Resume';
-
-  return { type, fields: extractDynamicFields(safeText, fileName, type) };
-};
-
-// Layer 5: Universal Complete Text Extraction (Dynamic Chunking)
-function extractDynamicFields(text: string, fileName: string, type: 'Resume' | 'Invoice' | 'Generic'): ParsedField[] {
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
+  // 1. Structure Detection & Extraction
+  const advancedData = extractEverything(safeText, fileName);
+  
+  // 2. Map back to UI-friendly structure
   const fields: ParsedField[] = [];
-  let currentHeader = "Document Profile / Summary";
-  let currentBlock: string[] = [];
-
-  // Semantic Heuristics
-  const isSentence = (str: string) => /[\.\?!;,]$/.test(str) || /\b(is|are|was|were|the|this|that|there|their|with|in|of|and)\b/i.test(str);
-
-  const isLikelyHeader = (line: string) => {
-    // Length constraints
-    if (line.length > 50 || line.length < 3) return false;
-    
-    // A header usually isn't a long descriptive sentence
-    if (isSentence(line)) return false;
-    
-    // Pure numbers aren't headers
-    if (/^\d+$/.test(line.replace(/[^0-9]/g, ''))) return false;
-
-    // Rule 1: Very strong signal if it's all UPPERCASE letters and reasonably short
-    if (line === line.toUpperCase() && /[A-Z]/.test(line)) return true;
-
-    // Rule 2: Title Casing
-    const words = line.split(/\s+/);
-    if (words.length > 0 && words.length <= 5) {
-      const cappedWords = words.filter(w => /^[A-Z]/.test(w));
-      if (cappedWords.length / words.length >= 0.6) return true;
-    }
-
-    // Rule 3: Exact Global Keyword Match
-    const keywords = ['experience', 'education', 'skills', 'projects', 'certifications', 'summary', 'profile', 'about', 'invoice', 'bill to', 'ship to', 'total', 'contact', 'references', 'awards', 'languages', 'open-source'];
-    if (keywords.some(kw => line.toLowerCase().includes(kw))) return true;
-
-    return false;
-  };
-
-  for (const line of lines) {
-    if (isLikelyHeader(line)) {
-      if (currentBlock.length > 0) {
-        fields.push({
-          label: currentHeader,
-          value: currentBlock.join('\n'),
-          confidence: calculateConfidence(currentHeader, currentBlock.join('\n'))
-        });
-      }
-      currentHeader = line;
-      currentBlock = [];
-    } else {
-      currentBlock.push(line);
-    }
-  }
-
-  // Push final leftover block
-  if (currentBlock.length > 0) {
+  
+  // Add Dynamic Fields
+  Object.entries(advancedData.fields).forEach(([label, data]) => {
     fields.push({
-      label: currentHeader,
-      value: currentBlock.join('\n'),
-      confidence: calculateConfidence(currentHeader, currentBlock.join('\n'))
+      label: label.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      value: data.value,
+      confidence: data.confidence
+    });
+  });
+
+  // Flatten Tables into the UI fields list for visibility (since UI holds a flat list)
+  advancedData.tables.forEach(table => {
+    const tableValue = table.rows.map(row => 
+      Object.entries(row).map(([k, v]) => `${k}: ${v}`).join(' | ')
+    ).join('\n---\n');
+    
+    fields.push({
+      label: `Table: ${table.table_name || 'Data Grid'}`,
+      value: tableValue,
+      confidence: 0.90
+    });
+  });
+
+  // Add Raw Sections
+  if (advancedData.raw_sections.length > 0) {
+    fields.push({
+      label: 'Document Sections',
+      value: advancedData.raw_sections.join('\n\n'),
+      confidence: 0.85
     });
   }
 
-  // Top-Level Structural Extraction (Emails, Phones, specific high-value items)
-  const emailRegex = /[a-zA-Z0-9.\-_+]+@[a-zA-Z0-9.\-_]+\.[a-zA-Z]{2,}/gi;
-  const emails = text.match(emailRegex) || [];
-  const phoneRegex = /(\+?\d{1,3}[\s\-]?\(?\d{3,5}\)?[\s\-]?\d{3,4}[\s\-]?\d{4})/g;
-  const phones = text.match(phoneRegex) || text.match(/\d{10,12}/g) || [];
-  const linkRegex = /(?:https?:\/\/)?(?:www\.)?(github\.com|linkedin\.com|medium\.com)[^\s]*/gi;
-  const links = text.match(linkRegex) || [];
+  return { 
+    type: advancedData.document_type as any, 
+    fields: fields 
+  };
+};
 
-  const topFields: ParsedField[] = [];
+function extractEverything(text: string, fileName: string): AdvancedParsedData {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  const result: AdvancedParsedData = {
+    document_type: "Generic",
+    fields: {},
+    tables: [],
+    raw_sections: [],
+    csv_ready: [],
+    confidence_score: 0.70
+  };
 
-  if (type === 'Invoice') {
-    const totalMatch = text.match(/(?:total|amount due|balance|payable|grand total):\s*[^\d]*([\d,]+\.?\d*)/i);
-    if (totalMatch) topFields.push({ label: 'Total Amount', value: totalMatch[1].startsWith('$') ? totalMatch[1] : `$${totalMatch[1]}`, confidence: 0.95 });
+  // --- 1. Document Type Detection ---
+  if (/invoice|bill to|total amount|tax invoice/i.test(text)) result.document_type = "Invoice";
+  else if (/experience|education|skills|resume|cv/i.test(text)) result.document_type = "Resume";
+  else if (/agreement|contract|this lease|hereby|party of the first part/i.test(text)) result.document_type = "Legal";
+
+  // --- 2. Key-Value Extraction (Dynamic Field Detection) ---
+  // Matches patterns like "Label: Value" or "Label ... Value"
+  const kvRegex = /^([^:\n]{2,30}):\s*(.+)$/gm;
+  let match;
+  while ((match = kvRegex.exec(text)) !== null) {
+    const label = match[1].toLowerCase().replace(/\s+/g, '_');
+    const value = match[2].trim();
+    if (value.length > 0 && value.length < 200) {
+      result.fields[label] = { value, confidence: 0.95 };
+    }
   }
 
-  if (emails.length > 0) topFields.push({ label: 'Identified Email(s)', value: [...new Set(emails)].join(', '), confidence: 0.99 });
-  if (phones.length > 0) topFields.push({ label: 'Identified Phone', value: [...new Set(phones)].join(', '), confidence: 0.95 });
-  if (links.length > 0) topFields.push({ label: 'Identified Links', value: [...new Set(links)].join(', '), confidence: 0.90 });
+  // --- 3. Table Extraction (Heuristic Logic) ---
+  // Looking for tab-separated or multiple spaces patterns
+  const tableData = detectAndExtractTables(lines);
+  result.tables = tableData;
 
-  // Filter out any blocks that ended up empty or purely whitespace
-  const validDynamicFields = fields.filter(f => f.value.trim().length > 0);
+  // --- 4. Section Detection ---
+  let currentSection = "";
+  let currentContent: string[] = [];
+  
+  for (const line of lines) {
+    if (line.toUpperCase() === line && line.length > 3 && line.length < 50) {
+      if (currentSection) result.raw_sections.push(`${currentSection}\n${currentContent.join('\n')}`);
+      currentSection = line;
+      currentContent = [];
+    } else {
+      currentContent.push(line);
+    }
+  }
+  if (currentSection) result.raw_sections.push(`${currentSection}\n${currentContent.join('\n')}`);
 
-  return [...topFields, ...validDynamicFields];
+  // --- 5. Normalization ---
+  Object.keys(result.fields).forEach(key => {
+    let val = result.fields[key].value;
+    
+    // Date Normalization (Attempt)
+    if (val.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) {
+      // Basic conversion helper
+      try {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) result.fields[key].value = d.toISOString().split('T')[0];
+      } catch (e) {}
+    }
+  });
+
+  return result;
+}
+
+function detectAndExtractTables(lines: string[]): TableData[] {
+  const tables: TableData[] = [];
+  let inTable = false;
+  let currentTable: TableData | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // A table line usually has multiple column identifiers separated by significant spacing or delimiters
+    const parts = line.split(/\s{2,}|\t/).filter(p => p.length > 0);
+    
+    if (parts.length >= 3) {
+      if (!inTable) {
+        inTable = true;
+        currentTable = {
+          table_name: `Table_${tables.length + 1}`,
+          columns: parts.map(p => p.toLowerCase().replace(/\s+/g, '_')),
+          rows: []
+        };
+      } else if (currentTable) {
+        const row: Record<string, any> = {};
+        currentTable.columns.forEach((col, idx) => {
+          row[col] = parts[idx] || "";
+        });
+        currentTable.rows.push(row);
+      }
+    } else {
+      if (inTable && currentTable) {
+        tables.push(currentTable);
+        inTable = false;
+        currentTable = null;
+      }
+    }
+  }
+  if (currentTable) tables.push(currentTable);
+  
+  return tables;
 }
