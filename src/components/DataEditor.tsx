@@ -113,21 +113,16 @@ export const DataEditor: React.FC<DataEditorProps> = ({
   const handleAddField = () => {
     if (!newFieldLabel.trim()) return;
     const newF: ParsedField = { label: newFieldLabel.trim(), value: newFieldValue.trim(), confidence: 1.0, source: 'structured' };
-    const updated = [...localFields, newF];
-    setLocalFields(updated);
-    updated.forEach((f, i) => onFieldChange(i, f.value));
+    setLocalFields(prev => [...prev, newF]);
     setNewFieldLabel('');
     setNewFieldValue('');
     setShowAddField(false);
   };
 
-  const promoteUnmapped = (field: ParsedField, idx: number) => {
-    const promoted: ParsedField = { ...field, source: 'structured', confidence: 0.85 };
-    const updated = localFields.map((f, i) => {
-      if (f === field) return promoted;
-      return f;
-    });
-    setLocalFields(updated);
+  const promoteUnmapped = (field: ParsedField) => {
+    setLocalFields(prev =>
+      prev.map(f => f === field ? { ...f, source: 'structured' as const, confidence: 0.85 } : f)
+    );
   };
 
   if (isProcessing) {
@@ -320,7 +315,7 @@ export const DataEditor: React.FC<DataEditorProps> = ({
                       </div>
                       <div className="px-4 pb-3">
                         <button
-                          onClick={() => promoteUnmapped(field, globalIdx)}
+                          onClick={() => promoteUnmapped(field)}
                           className="flex items-center space-x-1 px-3 py-1 bg-amber-500 text-white rounded-[6px] text-[10px] font-bold hover:bg-amber-600 transition-colors"
                         >
                           <ShieldCheck size={10} /><span>Promote to Structured</span>

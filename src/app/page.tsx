@@ -71,9 +71,13 @@ export default function Home() {
   };
 
   const handleFieldChange = (index: number, newValue: string) => {
-    const updatedFields = [...fields];
-    updatedFields[index].value = newValue;
-    setFields(updatedFields);
+    setFields(prev => {
+      const updatedFields = [...prev];
+      if (updatedFields[index]) {
+        updatedFields[index] = { ...updatedFields[index], value: newValue };
+      }
+      return updatedFields;
+    });
   };
 
   const handleSaveDocument = async () => {
