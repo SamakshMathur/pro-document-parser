@@ -59,7 +59,8 @@ export default function Home() {
         // If text is still empty, try OCR on PDF pages
         if (extractedText.trim().length < 20) {
           // Try client-side OCR as fallback
-          const { pdfToImages, extractTextFromImage } = await import('@/lib/ocr');
+          const { pdfToImages } = await import('@/lib/pdfToImages');
+          const { extractTextFromImage } = await import('@/lib/ocr');
           try {
             const images = await pdfToImages(selectedFile);
             let ocrText = '';
