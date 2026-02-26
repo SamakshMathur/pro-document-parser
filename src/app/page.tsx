@@ -56,17 +56,40 @@ export default function Home() {
 
         extractedText = data.text || '';
 
-        // If text is still empty, show a specific message in the editor
+        // If text is still empty, try OCR on PDF pages
         if (extractedText.trim().length < 20) {
-          setDocType('Generic');
-          setFields([{
-            label: '⚠️ Extraction Notice',
-            value: data.error || 'This PDF appears to be image-based (scanned). Please export it as a JPG or PNG and upload the image version for OCR-based extraction.',
-            confidence: 0,
-            source: 'unmapped',
-          }]);
-          setIsProcessing(false);
-          return;
+          // Try client-side OCR as fallback
+          const { pdfToImages, extractTextFromImage } = await import('@/lib/ocr');
+          try {
+            const images = await pdfToImages(selectedFile);
+            let ocrText = '';
+            for (const img of images) {
+              ocrText += await extractTextFromImage(img) + '\n';
+            }
+            if (ocrText.trim().length > 20) {
+              extractedText = ocrText;
+            } else {
+              setDocType('Generic');
+              setFields([{
+                label: '⚠️ Extraction Notice',
+                value: data.error || 'This PDF appears to be image-based (scanned). Please export it as a JPG or PNG and upload the image version for OCR-based extraction.',
+                confidence: 0,
+                source: 'unmapped',
+              }]);
+              setIsProcessing(false);
+              return;
+            }
+          } catch (ocrErr) {
+            setDocType('Generic');
+            setFields([{
+              label: '⚠️ Extraction Notice',
+              value: data.error || 'OCR failed. Please export PDF as image and upload.',
+              confidence: 0,
+              source: 'unmapped',
+            }]);
+            setIsProcessing(false);
+            return;
+          }
         }
       } else if (selectedFile.type.startsWith('image/')) {
         const { extractTextFromImage } = await import('@/lib/ocr');

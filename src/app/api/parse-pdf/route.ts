@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
       }, { status: 200 }); // 200 so client can show the error gracefully
     }
 
+    // Return extracted text and strategy for UI and JSON export
     return NextResponse.json({ text: extractedText.trim() });
 
   } catch (error) {

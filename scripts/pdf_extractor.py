@@ -16,8 +16,8 @@ def extract_text(file_path: str):
                 return
     except Exception as e:
         error = str(e)
-    
-    # Strategy 2: PyMuPDF (better layout preservation)  
+
+    # Strategy 2: PyMuPDF (better layout preservation)
     try:
         import fitz
         doc = fitz.open(file_path)
@@ -27,7 +27,19 @@ def extract_text(file_path: str):
             return
     except Exception as e:
         error = str(e)
-        
+
+    # Strategy 3: OCR fallback for scanned/image PDFs
+    try:
+        from pdf2image import convert_from_path
+        import pytesseract
+        images = convert_from_path(file_path)
+        ocr_text = "\n".join(pytesseract.image_to_string(img) for img in images)
+        if len(ocr_text.strip()) > 20:
+            print(json.dumps({"success": True, "text": ocr_text, "strategy": "ocr"}))
+            return
+    except Exception as e:
+        error = str(e)
+
     print(json.dumps({"success": False, "text": "", "error": error}))
 
 if __name__ == "__main__":

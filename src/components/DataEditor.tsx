@@ -74,6 +74,7 @@ export const DataEditor: React.FC<DataEditorProps> = ({
         extractedAt: new Date().toISOString(),
         coverage: coverage,
         totalFields: structuredFields.length,
+        extractionStrategy: masterData?.strategy || 'unknown',
       },
       structured_data: Object.fromEntries(
         structuredFields.map(f => [
