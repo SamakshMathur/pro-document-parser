@@ -44,23 +44,20 @@ This project is a full-stack document parser built with Next.js, supporting both
 
 ```mermaid
 graph TD
-		A[User uploads PDF/Image] --> B[Frontend Next.js]
-		B -->|PDF| C[PDF Extraction API /api/parse-pdf]
-		C -->|Text Extraction| D[JS pdf-parse]
-		C -->|Fallback| E[Python pdfplumber/PyMuPDF]
-		D --> F[Text]
-		E --> F[Text]
-		F --> G[Frontend Parsing Engine]
-		G --> H[OCR Pipeline (Tesseract.js)]
-		H --> I[Structured Data Extraction]
-		I --> J[UI Display]
-		I --> K[JSON Export]
-		J --> L[User]
-		K --> L[User]
-		B -->|Image| H
-		H --> I
-		I --> J
-		I --> K
+    A[User uploads PDF/Image] --> B[Frontend Next.js]
+    B -- PDF --> C[PDF Extraction API /api/parse-pdf]
+    C -- Text Extraction --> D[JS pdf-parse]
+    C -- Fallback --> E[Python pdfplumber/PyMuPDF]
+    D --> F[Text]
+    E --> F[Text]
+    F --> G[Frontend Parsing Engine]
+    G -- OCR --> H[OCR Pipeline (Tesseract.js)]
+    H --> I[Structured Data Extraction]
+    I --> J[UI Display]
+    I --> K[JSON Export]
+    J --> L[User]
+    K --> L[User]
+    B -- Image --> H
 ```
 
 ## Example Usage
