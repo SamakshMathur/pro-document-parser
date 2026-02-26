@@ -40,25 +40,7 @@ This project is a full-stack document parser built with Next.js, supporting both
 - `src/components/`: UI components (DataEditor, DocumentViewer, etc.)
 - `scripts/pdf_extractor.py`: Python backend for advanced PDF extraction
 
-## Flow Diagram
 
-```mermaid
-graph TD
-    A[User uploads PDF/Image] --> B[Frontend Next.js]
-    B -- PDF --> C[PDF Extraction API /api/parse-pdf]
-    C -- Text Extraction --> D[JS pdf-parse]
-    C -- Fallback --> E[Python pdfplumber/PyMuPDF]
-    D --> F[Text]
-    E --> F[Text]
-    F --> G[Frontend Parsing Engine]
-    G -- OCR --> H[OCR Pipeline (Tesseract.js)]
-    B -- Image --> H
-    H --> I[Structured Data Extraction]
-    I --> J[UI Display]
-    I --> K[JSON Export]
-    J --> L[User]
-    K --> L[User]
-```
 
 ## Example Usage
 1. Upload a PDF or image
