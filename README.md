@@ -1,3 +1,75 @@
+# PRO Document Parser
+
+## Overview
+This project is a full-stack document parser built with Next.js, supporting both digital and scanned PDFs, as well as images. It extracts structured data from documents using a combination of JS and Python backends, and a robust OCR pipeline for image-based content.
+
+## Features
+- Upload and parse PDFs and images
+- Extract structured fields, tables, and unmapped data
+- Automatic fallback to OCR for scanned/image-based PDFs
+- Export parsed data as JSON or CSV
+- Visual dashboard: Graphical entry point for uploading and processing documents, with real-time status and analytics.
+- Document gallery: Browse, search, and manage all parsed and saved documents in a dedicated repository. Easily select, preview, and delete documents. Access document details and rehydrate saved files for further review or export.
+
+## Requirements
+- Node.js (v18+ recommended)
+- Python 3 (for advanced PDF extraction)
+- npm (or yarn/pnpm)
+- Tesseract.js (included in dependencies)
+- pdfjs-dist (included in dependencies)
+- Python packages: pdfplumber, pymupdf, pdf2image, pytesseract
+
+## Setup
+1. Clone the repository
+2. Run `npm install` to install dependencies
+3. Ensure Python is installed and required packages are available
+4. Start the development server with `npm run dev`
+5. Access the app at [http://localhost:3001](http://localhost:3001)
+
+## API Endpoints
+- `/api/parse-pdf` (POST): Upload a PDF file and receive extracted text
+	- Request: FormData with `file` (PDF)
+	- Response: `{ text: string }` (extracted text)
+- Frontend automatically handles OCR fallback for scanned PDFs
+
+## Project Structure
+- `src/app/page.tsx`: Main UI logic and file upload handler
+- `src/app/api/parse-pdf/route.ts`: PDF extraction API (JS and Python)
+- `src/lib/ocr.ts`: OCR pipeline for images and scanned PDFs
+- `src/lib/pdfToImages.ts`: PDF-to-image conversion for client-side OCR fallback
+- `src/components/`: UI components (DataEditor, DocumentViewer, etc.)
+- `scripts/pdf_extractor.py`: Python backend for advanced PDF extraction
+
+## Flow Diagram
+
+```mermaid
+graph TD
+		A[User uploads PDF/Image] --> B[Frontend Next.js]
+		B -->|PDF| C[PDF Extraction API /api/parse-pdf]
+		C -->|Text Extraction| D[JS pdf-parse]
+		C -->|Fallback| E[Python pdfplumber/PyMuPDF]
+		D --> F[Text]
+		E --> F[Text]
+		F --> G[Frontend Parsing Engine]
+		G --> H[OCR Pipeline (Tesseract.js)]
+		H --> I[Structured Data Extraction]
+		I --> J[UI Display]
+		I --> K[JSON Export]
+		J --> L[User]
+		K --> L[User]
+		B -->|Image| H
+		H --> I
+		I --> J
+		I --> K
+```
+
+## Example Usage
+1. Upload a PDF or image
+2. View parsed fields and unmapped data in the UI
+3. Export results as JSON or CSV
+
+## License
+MIT
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
