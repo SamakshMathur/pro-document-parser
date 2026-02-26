@@ -52,12 +52,12 @@ graph TD
     E --> F[Text]
     F --> G[Frontend Parsing Engine]
     G -- OCR --> H[OCR Pipeline (Tesseract.js)]
+    B -- Image --> H
     H --> I[Structured Data Extraction]
     I --> J[UI Display]
     I --> K[JSON Export]
     J --> L[User]
     K --> L[User]
-    B -- Image --> H
 ```
 
 ## Example Usage
